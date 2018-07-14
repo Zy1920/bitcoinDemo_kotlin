@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>转账页面</title>
+</head>
+<body>
+<label>私钥</label><br>
+<textarea rows="5" cols="60" id="pri" placeholder="私钥"></textarea><br>
+
+<label>公钥</label><br>
+<textarea rows="5" cols="60" id="pub" placeholder="公钥"></textarea><br>
+
+<label>转账给</label><br>
+<textarea rows="5" cols="60" id="to" placeholder="转账账户"></textarea><br>
+
+<label>转账信息</label><br>
+<textarea rows="5" cols="60" id="msg" placeholder="转账信息">张三给王五转账5毛钱</textarea><br>
+<input type="button" value="提交转账" onclick="transaction()"><br>
+
+
+<script src="js/jquery-3.3.1.min.js"></script>
+<script src="js/jsrsasign-all-min.js"></script>
+<script type="text/javascript">
+    var priStr="-----BEGIN PRIVATE KEY-----\n" +
+        "MIICdwIBADANBgkqhkiG9w0BAQEFAASCAmEwggJdAgEAAoGBAM9/uXAX6FhsgA9pVx76++iO8dsV\n" +
+        "dxXFnBNTfLcN15tjFRGAZocPPxiKSA77tdJ7Tx3QsSc7JII/rXsV+4j7mJMk87BUrRXdvo5a56CF\n" +
+        "TpKnnSm33fGreMUI434Sb/3YoYPEvgTcW23T0AY0KovATqpR0zawXUt2UKuFE+cOoTQnAgMBAAEC\n" +
+        "gYBF8wvDYvvbmzAMgflxozB6tH2J2pGbkFNOHI3lc9AkPOGkVcG6dARUNIGYM3iW7SS9q1WdIQ3s\n" +
+        "rqS/4qg6BH7pOFNabYXcrvhbZ7tRykvGv+PUrYwyxfdV87/yt8Y9ISpC/vw/llLjEteWAVjCzlJZ\n" +
+        "e+YIdR1mVx5BioBq6MGT2QJBAOvhsyFxHRNDmlQRoV0IW9zYBhSANEoykFZdNg/abWLLauJNZhoX\n" +
+        "48F2U+Ii29LS2Zvc9OvPp2Mrb7QjWXNcEHMCQQDhMk8izMzUkopxA6gSLqIYV0LWrTDSuZsDUBrY\n" +
+        "f9bNd5ayi+Pk5Jxk++ML0C6QsKrl9mRO3KZl2WjnzVKf7yR9AkEAxoHlj0IzFtAwo4lGxBVRwbQm\n" +
+        "wb/2wW52G8hLw+GtZpQL+jDquRDbwicDhu6REoYRTeMQVxclJgca9X0+PSAAUwJBAJdcKiZ4wr+p\n" +
+        "0xVM4N1/rIFxvUHvXF52VAMxByo3Gpg1ZfuR3NYO9jNFvgBFp9amd+di6V68HbddHo6WyY8nvD0C\n" +
+        "QCcV3o7768uP0nFHtrKX06PTKLBTzdpWEd7sDRuYX2VER9nYL7qWlTEIHKu3BDexFCfrITfcXzNT\n" +
+        "fr5x7zKbMmM=\n" +
+        "-----END PRIVATE KEY-----"
+
+    var pubStr="MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDPf7lwF+hYbIAPaVce+vvojvHbFXcVxZwTU3y3\n" +
+        "DdebYxURgGaHDz8YikgO+7XSe08d0LEnOySCP617FfuI+5iTJPOwVK0V3b6OWueghU6Sp50pt93x\n" +
+        "q3jFCON+Em/92KGDxL4E3Ftt09AGNCqLwE6qUdM2sF1LdlCrhRPnDqE0JwIDAQAB"
+
+    var toStr="MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCS4jpk9UW2QbGUu2T/iaSt1S40vBD6iWscfeNn\n" +
+        "6GPC5UNbJrUfSgvraJc7XckHfeFCsemlgZw5Xf/NVzN+Ht1UlgJ5clFcBSFJj5hKj8Y11wh099BW\n" +
+        "E9aPWEVOVxyWJP3V4CTa7KbxNy3brDlUcnOCDMD9vhiozzuOdxe4l/pZ6QIDAQAB"
+
+    $(function () {
+        $("#pri").val(priStr)
+        $("#pub").val(pubStr)
+        $("#to").val(toStr)
+
+    })
+
+    function transaction(){
+        //1.获取输入的信息
+        var priS=$("#pri").val()
+        var pubS=$("#pub").val()
+        var toS=$("#to").val()
+        var contentS=$("#msg").val()
+
+        //2.对content进行签名(通过私钥进行签名)
+        //获取私钥
+        var priKey = KEYUTIL.getKey(priS)
+        //签名实现
+        var sig = new KJUR.crypto.Signature({"alg": "SHA256withRSA"});
+        sig.init(priKey);
+        sig.updateString(contentS);
+        var signed = sig.sign();
+
+
+        //3.将传递的数据转换为json字符串
+        var transaction={"signed":signed,"content":contentS,"publicKey":pubS,"toPublicKey":toS}
+        //将transaction转换为json字符串
+        var transactionStr=JSON.stringify(transaction)
+        console.log("xixixi")
+
+        //4.发送请求  把数据发送给节点服务器
+        $.ajax({
+            type: "POST",
+            url: "http://localhost:8080/addTransaction",
+            data: transactionStr,
+            success: function(msg){
+                console.log("请求成功")
+            },
+            error:function (XMLHttpRequest, textStatus, errorThrown) {
+                console.log("请求失败")
+            }
+        });
+
+
+    }
+
+
+
+</script>
+</body>
+</html>
